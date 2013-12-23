@@ -70,7 +70,7 @@ app.post('/data', function(req, res) {
         res.send(200);
     }
 
-    dropbox.files_put(USER_DATA_FILENAME, postData.data, {}, dropboxAccessToken, onReceivedPutFiles);
+    dropbox.files_put(USER_DATA_FILENAME, JSON.stringify(postData), {}, dropboxAccessToken, onReceivedPutFiles);
 });
 
 port = process.env.PORT || 8080;
