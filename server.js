@@ -8,27 +8,25 @@ app = express();
 app.use(express.logger());
 
 app.get('/', function(req, res) {
-    var params, userData, list = [], itemsOutstanding;
-
-    params = {list: true};
+    var userData, list = [], itemsOutstanding;
 
     function onReceivedUserData(data) {
-        if (data != null) {
-            userData = data;
-            dropbox.metadata("dropbox", basePath, params, dropboxAccessToken, onReceivedFileList);
-        } else {
-            res.send(500);
-        }
+        var params;
+
+        userData = data || {};
+        params = {list: true};
+        dropbox.metadata(basePath, params, dropboxAccessToken, onReceivedFileList);
     }
 
     function onReceivedFileList(data) {
         if (data != null) {
             if (data["contents"]) {
-                itemsOutstanding = data["contents"].length;
+                itemsOutstanding = 0;
                 data["contents"].forEach(function(file) {
                     var itemPath;
-                    if (!data["contents"]["is_dir"]) {
-                        itemPath = data["contents"]["path"];
+                    if (!file["is_dir"]) {
+                        itemsOutstanding++;
+                        itemPath = file["path"];
                         dropbox.media(itemPath, {}, dropboxAccessToken, function(data) {
                             onReceivedMediaURL(itemPath, data);
                         });
@@ -50,13 +48,13 @@ app.get('/', function(req, res) {
                 item["userData"] = userData;
             }
             item["url"] = data["url"];
-            list += item;
+            list.push(item);
         } else {
             console.warn("Warning: Invalid item path " + itemPath);
         }
 
         if (itemsOutstanding == 0) {
-            res.status(200).send(items);
+            res.status(200).send(list);
         }
     }
 
@@ -75,10 +73,13 @@ app.listen(port, function() {
     }
 
     console.log("Listening on " + port + " for " + basePath);
-    dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(token) {
-        dropboxAccessToken = token;
-        if (token == null) {
-            process.exit(0);
-        }
-    });
+
+    if (!dropboxAccessToken) {
+        dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(token) {
+            dropboxAccessToken = token;
+            if (token == null) {
+                process.exit(0);
+            }
+        });
+    }
 });
