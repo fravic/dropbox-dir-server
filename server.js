@@ -3,7 +3,8 @@ var express = require('express'),
     qs = require('qs');
 
 var USER_DATA_FILENAME = ".user_data";
-var app, port, dropboxAccessToken, basePath;
+
+var app, port, dropboxAccessToken;
 
 app = express();
 app.use(express.logger());
@@ -15,7 +16,7 @@ app.get('/', function(req, res) {
     function onReceivedUserData(data) {
         var params = {list: true};
         userData = data || {};
-        dropbox.metadata(basePath, params, dropboxAccessToken, onReceivedFileList);
+        dropbox.metadata("", params, dropboxAccessToken, onReceivedFileList);
     }
 
     function onReceivedFileList(data) {
@@ -59,7 +60,7 @@ app.get('/', function(req, res) {
         }
     }
 
-    dropbox.files(basePath + "/" + USER_DATA_FILENAME, {}, dropboxAccessToken, onReceivedUserData);
+    dropbox.files(USER_DATA_FILENAME, {}, dropboxAccessToken, onReceivedUserData);
 });
 
 app.post('/data', function(req, res) {
@@ -69,18 +70,12 @@ app.post('/data', function(req, res) {
         res.send(200);
     }
 
-    dropbox.files_put(basePath + "/" + USER_DATA_FILENAME, postData.data, {}, dropboxAccessToken, onReceivedPutFiles);
+    dropbox.files_put(USER_DATA_FILENAME, postData.data, {}, dropboxAccessToken, onReceivedPutFiles);
 });
 
 port = process.env.PORT || 8080;
 app.listen(port, function() {
-    basePath = process.argv[2];
-    if (!basePath) {
-        console.error("Must supply Dropbox path to serve!");
-        process.exit(0);
-    }
-
-    console.log("Listening on " + port + " for " + basePath);
+    console.log("Listening on " + port);
 
     if (!dropboxAccessToken) {
         dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(data) {
