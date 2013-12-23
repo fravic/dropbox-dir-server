@@ -1,20 +1,20 @@
 var express = require('express'),
-    dropbox = require('./lib/dropbox');
+    dropbox = require('./lib/dropbox'),
+    qs = require('qs');
 
 var USER_DATA_FILENAME = ".user_data";
 var app, port, dropboxAccessToken, basePath;
 
 app = express();
 app.use(express.logger());
+app.use(express.bodyParser());
 
 app.get('/', function(req, res) {
     var userData, list = [], itemsOutstanding;
 
     function onReceivedUserData(data) {
-        var params;
-
+        var params = {list: true};
         userData = data || {};
-        params = {list: true};
         dropbox.metadata(basePath, params, dropboxAccessToken, onReceivedFileList);
     }
 
@@ -45,9 +45,10 @@ app.get('/', function(req, res) {
         if (data != null) {
             var item = {};
             if (userData && userData[itemPath]) {
-                item["userData"] = userData;
+                item["userData"] = userData[itemPath];
             }
             item["url"] = data["url"];
+            item["path"] = itemPath;
             list.push(item);
         } else {
             console.warn("Warning: Invalid item path " + itemPath);
@@ -61,7 +62,14 @@ app.get('/', function(req, res) {
     dropbox.files(basePath + "/" + USER_DATA_FILENAME, {}, dropboxAccessToken, onReceivedUserData);
 });
 
-app.get('/data', function(req, res) {
+app.post('/data', function(req, res) {
+    var postData = qs.parse(req.body);
+
+    function onReceivedPutFiles() {
+        res.send(200);
+    }
+
+    dropbox.files_put(basePath + "/" + USER_DATA_FILENAME, postData.data, {}, dropboxAccessToken, onReceivedPutFiles);
 });
 
 port = process.env.PORT || 8080;
@@ -75,9 +83,9 @@ app.listen(port, function() {
     console.log("Listening on " + port + " for " + basePath);
 
     if (!dropboxAccessToken) {
-        dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(token) {
-            dropboxAccessToken = token;
-            if (token == null) {
+        dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(data) {
+            dropboxAccessToken = data.access_token;
+            if (dropboxAccessToken == null) {
                 process.exit(0);
             }
         });

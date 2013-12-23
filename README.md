@@ -15,8 +15,8 @@ Client Usage
 
 **GET /**
 
-Lists metadata for media files in $DROPBOX_DIR, their associated public access URIs, and any associated JSON data.
+Lists metadata for media files in `$DROPBOX_DIR`, their associated public access URIs, and any associated JSON data.
 
 **POST /data?path=$FILE_PATH&data=$JSON_OBJ**
 
-Associates $JSON_OBJ to a file in $DROPBOX_DIR, to be returned with future file listings.
+Saves `$JSON_OBJ` to a file in `$DROPBOX_DIR`, to be returned with future file listings. `$JSON_OBJ` should be a map of file paths to userData. This will overwrite any existing userData.
