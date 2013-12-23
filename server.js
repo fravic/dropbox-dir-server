@@ -1,25 +1,21 @@
-var express = require('express');
-var dropbox = require('./lib/dropbox');
+var express = require('express'),
+    dropbox = require('./lib/dropbox');
 
 var USER_DATA_FILENAME = ".user_data";
+var app, port, dropboxAccessToken, basePath;
 
-var app = express();
+app = express();
 app.use(express.logger());
 
 app.get('/', function(req, res) {
-    var path, params, userData, list = [], itemsOutstanding;
+    var params, userData, list = [], itemsOutstanding;
 
-    path = process.argv[1];
-    if (!path) {
-        console.error("Must supply Dropbox path to serve!");
-        res.send(500);
-    }
     params = {list: true};
 
     function onReceivedUserData(data) {
         if (data != null) {
             userData = data;
-            dropbox.metadata("dropbox", path, params, onReceivedFileList);
+            dropbox.metadata("dropbox", basePath, params, dropboxAccessToken, onReceivedFileList);
         } else {
             res.send(500);
         }
@@ -33,7 +29,7 @@ app.get('/', function(req, res) {
                     var itemPath;
                     if (!data["contents"]["is_dir"]) {
                         itemPath = data["contents"]["path"];
-                        dropbox.media(itemPath, {}, function(data) {
+                        dropbox.media(itemPath, {}, dropboxAccessToken, function(data) {
                             onReceivedMediaURL(itemPath, data);
                         });
                     }
@@ -64,13 +60,25 @@ app.get('/', function(req, res) {
         }
     }
 
-    dropbox.files(path + USER_DATA_FILENAME, onReceivedUserData);
+    dropbox.files(basePath + "/" + USER_DATA_FILENAME, {}, dropboxAccessToken, onReceivedUserData);
 });
 
 app.get('/data', function(req, res) {
 });
 
-var port = process.env.PORT || 8080;
+port = process.env.PORT || 8080;
 app.listen(port, function() {
-    console.log("Listening on " + port);
+    basePath = process.argv[2];
+    if (!basePath) {
+        console.error("Must supply Dropbox path to serve!");
+        process.exit(0);
+    }
+
+    console.log("Listening on " + port + " for " + basePath);
+    dropbox.authorizeViaCode(process.env.DROPBOX_CLIENT_ID, process.env.DROPBOX_CLIENT_SECRET, function(token) {
+        dropboxAccessToken = token;
+        if (token == null) {
+            process.exit(0);
+        }
+    });
 });
